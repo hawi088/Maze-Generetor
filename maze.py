@@ -5,8 +5,8 @@ import sys
 # Constants
 CELL_SIZE = 20
 WALL_THICKNESS = 2
-START_COLOR = (0, 255, 0)      # Green for start
-END_COLOR = (255, 0, 0)        # Red for end
+START_COLOR = (0, 255, 0)
+END_COLOR = (255, 0, 0)
 VISITED_COLOR = (200, 200, 200)
 WALL_COLOR = (0, 0, 0)
 BACKGROUND_COLOR = (255, 255, 255)
@@ -23,8 +23,6 @@ class Maze:
         self.leftBoundary = [True for _ in range(rows)]
         self.visited = [[False for _ in range(cols)] for _ in range(rows)]
         self.random = random.Random()
-        
-        # Start and end positions
         self.start_pos = None
         self.end_pos = None
         
@@ -68,13 +66,10 @@ class Maze:
         for r in range(self.rows):
             for c in range(self.cols):
                 self.draw_cell(r, c)
-        
-        # Draw start and end markers
         if self.start_pos:
             self.draw_cell(self.start_pos[0], self.start_pos[1], START_COLOR)
         if self.end_pos:
             self.draw_cell(self.end_pos[0], self.end_pos[1], END_COLOR)
-        
         pygame.display.flip()
     
     def get_neighbors(self, row, col):
@@ -101,8 +96,36 @@ class Maze:
         elif direction == 'east':
             self.eastWall[r1][c1] = False
     
+    def can_move(self, row, col, direction):
+        """Check if mouse can move in given direction"""
+        if direction == 'up':
+            if row > 0 and not self.northWall[row][col]:
+                return True
+        elif direction == 'down':
+            if row < self.rows - 1 and not self.northWall[row + 1][col]:
+                return True
+        elif direction == 'left':
+            if col > 0 and not self.eastWall[row][col - 1]:
+                return True
+        elif direction == 'right':
+            if col < self.cols - 1 and not self.eastWall[row][col]:
+                return True
+        return False
+    
+    def get_possible_moves(self, row, col):
+        """Get all possible moves from current position"""
+        moves = []
+        if self.can_move(row, col, 'up'):
+            moves.append(('up', row - 1, col))
+        if self.can_move(row, col, 'down'):
+            moves.append(('down', row + 1, col))
+        if self.can_move(row, col, 'left'):
+            moves.append(('left', row, col - 1))
+        if self.can_move(row, col, 'right'):
+            moves.append(('right', row, col + 1))
+        return moves
+    
     def generate_maze(self, delay=0.03):
-        # Reset
         self.northWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.eastWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.bottomBoundary = [True for _ in range(self.cols)]
@@ -114,7 +137,7 @@ class Maze:
         stack = [(start_row, start_col)]
         self.visited[start_row][start_col] = True
         
-        print("mouse creating maze...")
+        print("mouse generating maze...")
         
         while stack:
             r, c = stack[-1]
@@ -139,9 +162,7 @@ class Maze:
                 if delay > 0:
                     pygame.time.wait(int(delay * 1000))
         
-        # Choose start and end on opposite edges
         edge_choice = self.random.choice(['left_right', 'top_bottom'])
-        
         if edge_choice == 'left_right':
             self.start_pos = (self.random.randint(0, self.rows - 1), 0)
             self.end_pos = (self.random.randint(0, self.rows - 1), self.cols - 1)
@@ -153,15 +174,14 @@ class Maze:
             self.northWall[0][self.start_pos[1]] = False
             self.bottomBoundary[self.end_pos[1]] = False
         
-        print(f"Start: {self.start_pos} (GREEN)")
-        print(f"End: {self.end_pos} (RED)")
+        print(f" Start: {self.start_pos}  End: {self.end_pos}")
         self.draw_maze()
 
 def main():
     pygame.init()
     ROWS, COLS = 15, 20
     screen = pygame.display.set_mode((COLS * CELL_SIZE + 2, ROWS * CELL_SIZE + 2))
-    pygame.display.set_caption("Maze with Start and End")
+    pygame.display.set_caption("Maze with Movement Methods")
     
     maze = Maze(ROWS, COLS, screen)
     maze.generate_maze(delay=0.03)
