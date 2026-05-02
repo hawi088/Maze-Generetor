@@ -5,8 +5,11 @@ import sys
 # Constants
 CELL_SIZE = 20
 WALL_THICKNESS = 2
-START_COLOR = (0, 255, 0)
-END_COLOR = (255, 0, 0)
+START_COLOR = (0, 255, 0)      # Green for start
+END_COLOR = (255, 0, 0)        # Red for end
+MOUSE_COLOR = (255, 0, 0)      # RED DOT for the mouse
+DEAD_END_COLOR = (0, 0, 255)   # Blue for dead ends
+PATH_COLOR = (255, 200, 0)     # Gold/yellow for final path
 VISITED_COLOR = (200, 200, 200)
 WALL_COLOR = (0, 0, 0)
 BACKGROUND_COLOR = (255, 255, 255)
@@ -25,6 +28,7 @@ class Maze:
         self.random = random.Random()
         self.start_pos = None
         self.end_pos = None
+        self.dead_ends = []
         
     def draw_cell(self, row, col, color=None):
         x = col * CELL_SIZE
@@ -38,7 +42,6 @@ class Maze:
         if self.northWall[row][col]:
             pygame.draw.line(self.screen, WALL_COLOR, 
                            (x, y), (x + CELL_SIZE, y), WALL_THICKNESS)
-        
         if self.eastWall[row][col]:
             pygame.draw.line(self.screen, WALL_COLOR,
                            (x + CELL_SIZE, y), (x + CELL_SIZE, y + CELL_SIZE), WALL_THICKNESS)
@@ -97,7 +100,6 @@ class Maze:
             self.eastWall[r1][c1] = False
     
     def can_move(self, row, col, direction):
-        """Check if mouse can move in given direction"""
         if direction == 'up':
             if row > 0 and not self.northWall[row][col]:
                 return True
@@ -113,7 +115,6 @@ class Maze:
         return False
     
     def get_possible_moves(self, row, col):
-        """Get all possible moves from current position"""
         moves = []
         if self.can_move(row, col, 'up'):
             moves.append(('up', row - 1, col))
@@ -124,6 +125,58 @@ class Maze:
         if self.can_move(row, col, 'right'):
             moves.append(('right', row, col + 1))
         return moves
+    
+    def solve_maze_with_backtracking(self, delay=0.03):
+        """Solve maze with RED DOT and BLUE DEAD ENDS"""
+        if not self.start_pos or not self.end_pos:
+            print("Maze not generated yet!")
+            return False
+        
+        solver_visited = [[False for _ in range(self.cols)] for _ in range(self.rows)]
+        self.dead_ends = []
+        stack = [(self.start_pos[0], self.start_pos[1])]
+        solver_visited[self.start_pos[0]][self.start_pos[1]] = True
+        
+        print("\n RED DOT mouse solving with BACKTRACKING...")
+        print(" Blue dots = dead ends")
+        
+        while stack:
+            r, c = stack[-1]
+            self.draw_cell(r, c, MOUSE_COLOR)
+            pygame.display.flip()
+            
+            if delay > 0:
+                pygame.time.wait(int(delay * 1000))
+            
+            if (r, c) == self.end_pos:
+                print(f"\nPATH FOUND! Solution length: {len(stack)} steps")
+                
+                # Highlight the final path in gold
+                for pos in stack:
+                    self.draw_cell(pos[0], pos[1], PATH_COLOR)
+                self.draw_cell(self.end_pos[0], self.end_pos[1], END_COLOR)
+                pygame.display.flip()
+                pygame.time.wait(2000)
+                return True
+            
+            moves = self.get_possible_moves(r, c)
+            unvisited_moves = [(dir, nr, nc) for dir, nr, nc in moves 
+                              if not solver_visited[nr][nc]]
+            
+            if unvisited_moves:
+                direction, nr, nc = unvisited_moves[0]
+                solver_visited[nr][nc] = True
+                stack.append((nr, nc))
+            else:
+                dead_end = stack.pop()
+                self.dead_ends.append(dead_end)
+                self.draw_cell(dead_end[0], dead_end[1], DEAD_END_COLOR)
+                pygame.display.flip()
+                if delay > 0:
+                    pygame.time.wait(int(delay * 1000))
+        
+        print("\n No path found!")
+        return False
     
     def generate_maze(self, delay=0.03):
         self.northWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
@@ -137,7 +190,7 @@ class Maze:
         stack = [(start_row, start_col)]
         self.visited[start_row][start_col] = True
         
-        print("mouse generating maze...")
+        print("mouse creating maze...")
         
         while stack:
             r, c = stack[-1]
@@ -181,12 +234,16 @@ def main():
     pygame.init()
     ROWS, COLS = 15, 20
     screen = pygame.display.set_mode((COLS * CELL_SIZE + 2, ROWS * CELL_SIZE + 2))
-    pygame.display.set_caption("Maze with Movement Methods")
+    pygame.display.set_caption("Maze - Red Dot Solver with Blue Dead Ends")
     
     maze = Maze(ROWS, COLS, screen)
     maze.generate_maze(delay=0.03)
     
+    print("\nSPACE - Solve (RED dot, BLUE dead ends) | R - New maze | ESC - Exit")
+    
     running = True
+    solving = False
+    
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -196,6 +253,10 @@ def main():
                     running = False
                 elif event.key == pygame.K_r:
                     maze.generate_maze(delay=0.03)
+                elif event.key == pygame.K_SPACE and not solving:
+                    solving = True
+                    maze.solve_maze_with_backtracking(delay=0.03)
+                    solving = False
     
     pygame.quit()
     sys.exit()
