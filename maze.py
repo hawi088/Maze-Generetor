@@ -5,11 +5,11 @@ import sys
 # Constants
 CELL_SIZE = 20
 WALL_THICKNESS = 2
-START_COLOR = (0, 255, 0)      # Green for start
-END_COLOR = (255, 0, 0)        # Red for end
-MOUSE_COLOR = (255, 0, 0)      # RED DOT for the mouse
-DEAD_END_COLOR = (0, 0, 255)   # Blue for dead ends
-PATH_COLOR = (255, 200, 0)     # Gold/yellow for final path
+START_COLOR = (0, 255, 0)
+END_COLOR = (255, 0, 0)
+MOUSE_COLOR = (255, 0, 0)
+DEAD_END_COLOR = (0, 0, 255)
+PATH_COLOR = (255, 200, 0)
 VISITED_COLOR = (200, 200, 200)
 WALL_COLOR = (0, 0, 0)
 BACKGROUND_COLOR = (255, 255, 255)
@@ -127,7 +127,6 @@ class Maze:
         return moves
     
     def solve_maze_with_backtracking(self, delay=0.03):
-        """Solve maze with RED DOT and BLUE DEAD ENDS"""
         if not self.start_pos or not self.end_pos:
             print("Maze not generated yet!")
             return False
@@ -137,8 +136,7 @@ class Maze:
         stack = [(self.start_pos[0], self.start_pos[1])]
         solver_visited[self.start_pos[0]][self.start_pos[1]] = True
         
-        print("\n RED DOT mouse solving with BACKTRACKING...")
-        print(" Blue dots = dead ends")
+        print("\nsolving by backtracking....")
         
         while stack:
             r, c = stack[-1]
@@ -149,9 +147,7 @@ class Maze:
                 pygame.time.wait(int(delay * 1000))
             
             if (r, c) == self.end_pos:
-                print(f"\nPATH FOUND! Solution length: {len(stack)} steps")
-                
-                # Highlight the final path in gold
+                print(f" PATH FOUND! Length: {len(stack)}")
                 for pos in stack:
                     self.draw_cell(pos[0], pos[1], PATH_COLOR)
                 self.draw_cell(self.end_pos[0], self.end_pos[1], END_COLOR)
@@ -175,7 +171,84 @@ class Maze:
                 if delay > 0:
                     pygame.time.wait(int(delay * 1000))
         
-        print("\n No path found!")
+        print("No path found!")
+        return False
+    
+    def left_hand_rule_demo(self, delay=0.03):
+        """Demonstrate left-hand rule (shoulder-to-the-wall)"""
+        if not self.start_pos or not self.end_pos:
+            return False
+        
+        self.draw_maze()
+        r, c = self.start_pos
+        facing = 0  # 0: up, 1: right, 2: down, 3: left
+        visited_with_facing = set()
+        steps = 0
+        max_steps = self.rows * self.cols * 5
+        
+        print("\nleft hand rule..")
+        
+        while steps < max_steps:
+            steps += 1
+            self.draw_cell(r, c, MOUSE_COLOR)
+            pygame.display.flip()
+            
+            if delay > 0:
+                pygame.time.wait(int(delay * 1000))
+            
+            if (r, c) == self.end_pos:
+                print(f" Left-hand rule found exit in {steps} steps!")
+                pygame.time.wait(2000)
+                return True
+            
+            found_move = False
+            for turn in [-1, 0, 1, 2]:
+                new_facing = (facing + turn) % 4
+                nr, nc = r, c
+                
+                if new_facing == 0:
+                    nr, nc = r - 1, c
+                elif new_facing == 1:
+                    nr, nc = r, c + 1
+                elif new_facing == 2:
+                    nr, nc = r + 1, c
+                else:
+                    nr, nc = r, c - 1
+                
+                valid = True
+                if nr < 0 or nr >= self.rows or nc < 0 or nc >= self.cols:
+                    valid = False
+                else:
+                    if new_facing == 0 and self.northWall[r][c]:
+                        valid = False
+                    elif new_facing == 1 and self.eastWall[r][c]:
+                        valid = False
+                    elif new_facing == 2 and self.northWall[nr][nc]:
+                        valid = False
+                    elif new_facing == 3 and self.eastWall[r][nc]:
+                        valid = False
+                
+                if valid:
+                    if (r, c) != self.start_pos:
+                        self.draw_cell(r, c, VISITED_COLOR)
+                    r, c = nr, nc
+                    facing = new_facing
+                    found_move = True
+                    
+                    state = (r, c, facing)
+                    if state in visited_with_facing:
+                        print(f"\n loop found at ({r},{c}) after {steps} steps!")
+                        print("stuck in cycle")
+                        pygame.time.wait(3000)
+                        return False
+                    visited_with_facing.add(state)
+                    break
+            
+            if not found_move:
+                print("\nNo valid moves left")
+                return False
+        
+        print("\n exceeded maximum steps")
         return False
     
     def generate_maze(self, delay=0.03):
@@ -190,7 +263,7 @@ class Maze:
         stack = [(start_row, start_col)]
         self.visited[start_row][start_col] = True
         
-        print("mouse creating maze...")
+        print("mouse generating maze...")
         
         while stack:
             r, c = stack[-1]
@@ -234,12 +307,14 @@ def main():
     pygame.init()
     ROWS, COLS = 15, 20
     screen = pygame.display.set_mode((COLS * CELL_SIZE + 2, ROWS * CELL_SIZE + 2))
-    pygame.display.set_caption("Maze - Red Dot Solver with Blue Dead Ends")
+    pygame.display.set_caption("Maze - Backtracking vs Left-Hand Rule")
     
     maze = Maze(ROWS, COLS, screen)
     maze.generate_maze(delay=0.03)
     
-    print("\nSPACE - Solve (RED dot, BLUE dead ends) | R - New maze | ESC - Exit")
+    print("\nSPACE - Backtracking (RED dot, BLUE dead ends)")
+    print("L     - Left-hand rule demo")
+    print("R     - New maze | ESC - Exit")
     
     running = True
     solving = False
@@ -256,6 +331,10 @@ def main():
                 elif event.key == pygame.K_SPACE and not solving:
                     solving = True
                     maze.solve_maze_with_backtracking(delay=0.03)
+                    solving = False
+                elif event.key == pygame.K_l and not solving:
+                    solving = True
+                    maze.left_hand_rule_demo(delay=0.03)
                     solving = False
     
     pygame.quit()
