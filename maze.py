@@ -405,14 +405,11 @@ class Maze:
                         self.eastWall[r][c] = old_state
         
         if extra_wall_count > 0:
-            print(f"\n✅ Added {extra_wall_count} extra walls creating CYCLES!")
-            print("   Look for MAGENTA walls - these create loops in the maze.")
-            print("   These cycles will break the left-hand rule!")
+            print(f"\nAdded {extra_wall_count} extra walls creating CYCLES!")
             pygame.time.wait(2000)
         else:
-            print("\n⚠️ No cycles were created this time. Press R to try again!")
-        # ========== END OF BONUS ADDITION ==========
-        
+            print("\n No cycles created.Press R to try again!")
+       
         self.draw_maze()
 
 def main():
@@ -425,13 +422,9 @@ def main():
     maze.generate_maze(delay=0.03)
     
     print("\n" + "="*50)  # ADDED for BONUS
-    print("🎯 BONUS CHALLENGE: Cycles break Left-Hand Rule!")  # ADDED for BONUS
-    print("="*50)  # ADDED for BONUS
     print("SPACE - Backtracking (RED dot, BLUE dead ends) - ALWAYS works")
     print("L     - Left-hand rule demo - WILL FAIL with cycles")
     print("R     - New maze | ESC - Exit")
-    print("\n🟣 MAGENTA walls = cycles created with 1/20 chance")  # ADDED for BONUS
-    
     running = True
     solving = False
     
