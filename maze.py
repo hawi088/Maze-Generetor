@@ -1,6 +1,7 @@
 import pygame
 import random
 import sys
+from collections import deque  # ADDED for BONUS: needed for is_connected() BFS
 
 # Constants
 CELL_SIZE = 20
@@ -13,6 +14,7 @@ PATH_COLOR = (255, 200, 0)
 VISITED_COLOR = (200, 200, 200)
 WALL_COLOR = (0, 0, 0)
 BACKGROUND_COLOR = (255, 255, 255)
+CYCLE_WALL_COLOR = (255, 0, 255)  # ADDED for BONUS: Magenta for cycle walls
 
 class Maze:
     def __init__(self, rows, cols, screen):
@@ -29,6 +31,7 @@ class Maze:
         self.start_pos = None
         self.end_pos = None
         self.dead_ends = []
+        self.cycle_walls = []  # ADDED for BONUS: Track walls that create cycles
         
     def draw_cell(self, row, col, color=None):
         x = col * CELL_SIZE
@@ -40,11 +43,21 @@ class Maze:
             pygame.draw.rect(self.screen, BACKGROUND_COLOR, (x, y, CELL_SIZE, CELL_SIZE))
         
         if self.northWall[row][col]:
-            pygame.draw.line(self.screen, WALL_COLOR, 
-                           (x, y), (x + CELL_SIZE, y), WALL_THICKNESS)
+            # MODIFIED for BONUS: Check if this is a cycle wall to draw in magenta
+            if ('north', row, col) in self.cycle_walls:
+                pygame.draw.line(self.screen, CYCLE_WALL_COLOR, 
+                               (x, y), (x + CELL_SIZE, y), WALL_THICKNESS)
+            else:
+                pygame.draw.line(self.screen, WALL_COLOR, 
+                               (x, y), (x + CELL_SIZE, y), WALL_THICKNESS)
         if self.eastWall[row][col]:
-            pygame.draw.line(self.screen, WALL_COLOR,
-                           (x + CELL_SIZE, y), (x + CELL_SIZE, y + CELL_SIZE), WALL_THICKNESS)
+            # MODIFIED for BONUS: Check if this is a cycle wall to draw in magenta
+            if ('east', row, col) in self.cycle_walls:
+                pygame.draw.line(self.screen, CYCLE_WALL_COLOR,
+                               (x + CELL_SIZE, y), (x + CELL_SIZE, y + CELL_SIZE), WALL_THICKNESS)
+            else:
+                pygame.draw.line(self.screen, WALL_COLOR,
+                               (x + CELL_SIZE, y), (x + CELL_SIZE, y + CELL_SIZE), WALL_THICKNESS)
         
         if row == self.rows - 1:
             if self.bottomBoundary[col]:
@@ -126,6 +139,38 @@ class Maze:
             moves.append(('right', row, col + 1))
         return moves
     
+    # ADDED for BONUS: Check if start and end are connected using BFS
+    def is_connected(self):
+        """Check if start and end are connected using BFS"""
+        if not self.start_pos or not self.end_pos:
+            return False
+        
+        visited = [[False for _ in range(self.cols)] for _ in range(self.rows)]
+        queue = deque([self.start_pos])
+        visited[self.start_pos[0]][self.start_pos[1]] = True
+        
+        while queue:
+            r, c = queue.popleft()
+            
+            if (r, c) == self.end_pos:
+                return True
+            
+            # Check all four directions
+            if r > 0 and not self.northWall[r][c] and not visited[r-1][c]:
+                visited[r-1][c] = True
+                queue.append((r-1, c))
+            if r < self.rows-1 and not self.northWall[r+1][c] and not visited[r+1][c]:
+                visited[r+1][c] = True
+                queue.append((r+1, c))
+            if c > 0 and not self.eastWall[r][c-1] and not visited[r][c-1]:
+                visited[r][c-1] = True
+                queue.append((r, c-1))
+            if c < self.cols-1 and not self.eastWall[r][c] and not visited[r][c+1]:
+                visited[r][c+1] = True
+                queue.append((r, c+1))
+        
+        return False
+    
     def solve_maze_with_backtracking(self, delay=0.03):
         if not self.start_pos or not self.end_pos:
             print("Maze not generated yet!")
@@ -174,6 +219,7 @@ class Maze:
         print("No path found!")
         return False
     
+    # MODIFIED for BONUS: Added cycle detection message
     def left_hand_rule_demo(self, delay=0.03):
         """Demonstrate left-hand rule (shoulder-to-the-wall)"""
         if not self.start_pos or not self.end_pos:
@@ -187,6 +233,9 @@ class Maze:
         max_steps = self.rows * self.cols * 5
         
         print("\nleft hand rule..")
+        # ADDED for BONUS: Warning about cycles
+        if self.cycle_walls:
+            print("⚠️  WARNING: This maze has CYCLES (magenta walls)! Left-hand rule may fail!")
         
         while steps < max_steps:
             steps += 1
@@ -239,6 +288,9 @@ class Maze:
                     if state in visited_with_facing:
                         print(f"\n loop found at ({r},{c}) after {steps} steps!")
                         print("stuck in cycle")
+                        # ADDED for BONUS: Better explanation
+                        print("\n💡 The left-hand rule failed because cycles in the maze")
+                        print("   created a loop that the mouse cannot escape!")
                         pygame.time.wait(3000)
                         return False
                     visited_with_facing.add(state)
@@ -251,12 +303,14 @@ class Maze:
         print("\n exceeded maximum steps")
         return False
     
+    # MODIFIED for BONUS: Added cycle creation to generate_maze
     def generate_maze(self, delay=0.03):
         self.northWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.eastWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.bottomBoundary = [True for _ in range(self.cols)]
         self.leftBoundary = [True for _ in range(self.rows)]
         self.visited = [[False for _ in range(self.cols)] for _ in range(self.rows)]
+        self.cycle_walls = []  # ADDED for BONUS: Reset cycle walls
         
         start_row = self.random.randint(0, self.rows - 1)
         start_col = self.random.randint(0, self.cols - 1)
@@ -301,20 +355,82 @@ class Maze:
             self.bottomBoundary[self.end_pos[1]] = False
         
         print(f" Start: {self.start_pos}  End: {self.end_pos}")
+        
+        # ========== ADDED for BONUS: Extra walls to create cycles (1 in 20 chance) ==========
+        print("\n🎯 BONUS: Adding extra walls with 1/20 chance to create CYCLES...")
+        extra_wall_count = 0
+        
+        # Collect all possible walls that could be added
+        candidate_walls = []
+        for r in range(self.rows):
+            for c in range(self.cols):
+                # North wall candidate (if it doesn't exist)
+                if not self.northWall[r][c] and r > 0:
+                    candidate_walls.append(('north', r, c))
+                # East wall candidate (if it doesn't exist)
+                if not self.eastWall[r][c]:
+                    candidate_walls.append(('east', r, c))
+        
+        # Randomly add walls with 1 in 20 chance
+        random.shuffle(candidate_walls)
+        for wall_type, r, c in candidate_walls:
+            if self.random.randint(1, 20) == 1:  # 1 in 20 chance
+                # Try adding the wall
+                old_state = None
+                if wall_type == 'north':
+                    old_state = self.northWall[r][c]
+                    self.northWall[r][c] = True
+                else:  # east
+                    old_state = self.eastWall[r][c]
+                    self.eastWall[r][c] = True
+                
+                # Check if start and end are still connected
+                if self.is_connected():
+                    extra_wall_count += 1
+                    self.cycle_walls.append((wall_type, r, c))
+                    print(f"  ✓ Added wall at ({r},{c}) - Created a CYCLE!")
+                    # Draw the new wall in magenta briefly to highlight
+                    self.draw_cell(r, c)
+                    if wall_type == 'north' and r > 0:
+                        self.draw_cell(r-1, c)
+                    elif wall_type == 'east' and c < self.cols-1:
+                        self.draw_cell(r, c+1)
+                    pygame.display.flip()
+                    pygame.time.wait(300)
+                else:
+                    # Revert the wall - it would disconnect the maze
+                    if wall_type == 'north':
+                        self.northWall[r][c] = old_state
+                    else:
+                        self.eastWall[r][c] = old_state
+        
+        if extra_wall_count > 0:
+            print(f"\n✅ Added {extra_wall_count} extra walls creating CYCLES!")
+            print("   Look for MAGENTA walls - these create loops in the maze.")
+            print("   These cycles will break the left-hand rule!")
+            pygame.time.wait(2000)
+        else:
+            print("\n⚠️ No cycles were created this time. Press R to try again!")
+        # ========== END OF BONUS ADDITION ==========
+        
         self.draw_maze()
 
 def main():
     pygame.init()
     ROWS, COLS = 15, 20
     screen = pygame.display.set_mode((COLS * CELL_SIZE + 2, ROWS * CELL_SIZE + 2))
-    pygame.display.set_caption("Maze - Backtracking vs Left-Hand Rule")
+    pygame.display.set_caption("BONUS: Maze with Cycles - Backtracking vs Left-Hand Rule")  # MODIFIED for BONUS
     
     maze = Maze(ROWS, COLS, screen)
     maze.generate_maze(delay=0.03)
     
-    print("\nSPACE - Backtracking (RED dot, BLUE dead ends)")
-    print("L     - Left-hand rule demo")
+    print("\n" + "="*50)  # ADDED for BONUS
+    print("🎯 BONUS CHALLENGE: Cycles break Left-Hand Rule!")  # ADDED for BONUS
+    print("="*50)  # ADDED for BONUS
+    print("SPACE - Backtracking (RED dot, BLUE dead ends) - ALWAYS works")
+    print("L     - Left-hand rule demo - WILL FAIL with cycles")
     print("R     - New maze | ESC - Exit")
+    print("\n🟣 MAGENTA walls = cycles created with 1/20 chance")  # ADDED for BONUS
     
     running = True
     solving = False
