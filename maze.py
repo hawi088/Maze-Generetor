@@ -387,7 +387,6 @@ class Maze:
                 if self.is_connected():
                     extra_wall_count += 1
                     self.cycle_walls.append((wall_type, r, c))
-                    print(f"  ✓ Added wall at ({r},{c}) - Created a CYCLE!")
                     # Draw the new wall in magenta briefly to highlight
                     self.draw_cell(r, c)
                     if wall_type == 'north' and r > 0:
