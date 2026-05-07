@@ -1,7 +1,7 @@
 import pygame
 import random
 import sys
-from collections import deque  # ADDED for BONUS: needed for is_connected() BFS
+from collections import deque 
 
 # Constants
 CELL_SIZE = 20
@@ -14,7 +14,7 @@ PATH_COLOR = (255, 200, 0)
 VISITED_COLOR = (200, 200, 200)
 WALL_COLOR = (0, 0, 0)
 BACKGROUND_COLOR = (255, 255, 255)
-CYCLE_WALL_COLOR = (255, 0, 255)  # ADDED for BONUS: Magenta for cycle walls
+CYCLE_WALL_COLOR = (255, 0, 255)  
 
 class Maze:
     def __init__(self, rows, cols, screen):
@@ -31,7 +31,7 @@ class Maze:
         self.start_pos = None
         self.end_pos = None
         self.dead_ends = []
-        self.cycle_walls = []  # ADDED for BONUS: Track walls that create cycles
+        self.cycle_walls = [] 
         
     def draw_cell(self, row, col, color=None):
         x = col * CELL_SIZE
@@ -42,8 +42,7 @@ class Maze:
         else:
             pygame.draw.rect(self.screen, BACKGROUND_COLOR, (x, y, CELL_SIZE, CELL_SIZE))
         
-        if self.northWall[row][col]:
-            # MODIFIED for BONUS: Check if this is a cycle wall to draw in magenta
+        if self.northWall[row][col]: 
             if ('north', row, col) in self.cycle_walls:
                 pygame.draw.line(self.screen, CYCLE_WALL_COLOR, 
                                (x, y), (x + CELL_SIZE, y), WALL_THICKNESS)
@@ -139,7 +138,7 @@ class Maze:
             moves.append(('right', row, col + 1))
         return moves
     
-    # ADDED for BONUS: Check if start and end are connected using BFS
+   
     def is_connected(self):
         """Check if start and end are connected using BFS"""
         if not self.start_pos or not self.end_pos:
@@ -155,7 +154,7 @@ class Maze:
             if (r, c) == self.end_pos:
                 return True
             
-            # Check all four directions
+           
             if r > 0 and not self.northWall[r][c] and not visited[r-1][c]:
                 visited[r-1][c] = True
                 queue.append((r-1, c))
@@ -235,7 +234,7 @@ class Maze:
         print("\nleft hand rule..")
         # ADDED for BONUS: Warning about cycles
         if self.cycle_walls:
-            print("⚠️  WARNING: This maze has CYCLES (magenta walls)! Left-hand rule may fail!")
+            print("This maze has CYCLES! Left-hand rule may fail!")
         
         while steps < max_steps:
             steps += 1
@@ -303,14 +302,14 @@ class Maze:
         print("\n exceeded maximum steps")
         return False
     
-    # MODIFIED for BONUS: Added cycle creation to generate_maze
+   
     def generate_maze(self, delay=0.03):
         self.northWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.eastWall = [[True for _ in range(self.cols)] for _ in range(self.rows)]
         self.bottomBoundary = [True for _ in range(self.cols)]
         self.leftBoundary = [True for _ in range(self.rows)]
         self.visited = [[False for _ in range(self.cols)] for _ in range(self.rows)]
-        self.cycle_walls = []  # ADDED for BONUS: Reset cycle walls
+        self.cycle_walls = [] 
         
         start_row = self.random.randint(0, self.rows - 1)
         start_col = self.random.randint(0, self.cols - 1)
@@ -356,11 +355,11 @@ class Maze:
         
         print(f" Start: {self.start_pos}  End: {self.end_pos}")
         
-        # ========== ADDED for BONUS: Extra walls to create cycles (1 in 20 chance) ==========
-        print("\n🎯 BONUS: Adding extra walls with 1/20 chance to create CYCLES...")
+        
+        print("\nAdding extra walls with 1/20 chance to create CYCLES...")
         extra_wall_count = 0
         
-        # Collect all possible walls that could be added
+
         candidate_walls = []
         for r in range(self.rows):
             for c in range(self.cols):
@@ -416,12 +415,11 @@ def main():
     pygame.init()
     ROWS, COLS = 15, 20
     screen = pygame.display.set_mode((COLS * CELL_SIZE + 2, ROWS * CELL_SIZE + 2))
-    pygame.display.set_caption("BONUS: Maze with Cycles - Backtracking vs Left-Hand Rule")  # MODIFIED for BONUS
-    
+    pygame.display.set_caption("Maze generator") 
     maze = Maze(ROWS, COLS, screen)
     maze.generate_maze(delay=0.03)
     
-    print("\n" + "="*50)  # ADDED for BONUS
+    print("\n" + "="*50)  
     print("SPACE - Backtracking (RED dot, BLUE dead ends) - ALWAYS works")
     print("L     - Left-hand rule demo - WILL FAIL with cycles")
     print("R     - New maze | ESC - Exit")
